@@ -1,61 +1,51 @@
 #!/bin/bash
 
-# Path to polkadot binary
-POLKADOT_BIN="/home/$USER/polkadot-sdk/target/release/polkadot"
+USER_HOME="/home/$USER"
+POLKADOT_BIN="$USER_HOME/polkadot-sdk/target/release/polkadot"
+LOG_FILE="/var/log/ksmcc3/ksmcc3_error.log"
+SERVICE_NAME="ksmcc3.service"
 
 echo "=== Checking polkadot binary ==="
 if [ -f "$POLKADOT_BIN" ]; then
     echo "File exists: $POLKADOT_BIN"
-    echo "SELinux context before restore:"
-    ls -Z "$POLKADOT_BIN"
-    echo "Restoring SELinux context..."
-    sudo restorecon -v "$POLKADOT_BIN"
-    echo "SELinux context after restore:"
-    ls -Z "$POLKADOT_BIN"
 else
     echo "File not found: $POLKADOT_BIN"
     exit 1
 fi
 
-echo "=== Stopping ksmcc3.service ==="
-sudo systemctl stop ksmcc3.service
-echo "Service stopped."
+echo -e "\n=== Stopping service ==="
+sudo systemctl stop $SERVICE_NAME
+echo "Service $SERVICE_NAME stopped."
 
-echo "=== Pausing for 5 seconds ==="
+echo -e "\n=== Pause 5 seconds ==="
 sleep 5
 
-echo "=== Removing old log file ==="
-sudo rm -f /var/log/ksmcc3/ksmcc3_error.log
-echo "Old log file removed."
-
-echo "=== Pausing for 2 seconds ==="
+echo -e "\n=== Removing log file ==="
+if [ -f "$LOG_FILE" ]; then
+    sudo rm "$LOG_FILE"
+    echo "Removed $LOG_FILE"
+else
+    echo "Log file not found, skipping removal"
+fi
 sleep 2
 
-echo "=== Creating new log file ==="
-sudo touch /var/log/ksmcc3/ksmcc3_error.log
-echo "New log file created."
+echo -e "\n=== Creating log file ==="
+sudo touch "$LOG_FILE"
+echo "Created $LOG_FILE"
 
-echo "=== Starting ksmcc3.service ==="
-sudo systemctl start ksmcc3.service
+echo -e "\n=== Applying SELinux context ==="
+ls -Z "$POLKADOT_BIN"
+sudo restorecon -v "$POLKADOT_BIN"
 
-# Проверка статуса сервиса
-echo "=== Checking service status ==="
-SERVICE_STATUS=$(systemctl is-active ksmcc3.service)
-if [ "$SERVICE_STATUS" = "active" ]; then
-    echo "Service ksmcc3 is running."
-else
-    echo "Service ksmcc3 failed to start!"
-    sudo journalctl -u ksmcc3.service --no-pager | tail -n 20
-fi
+echo -e "\n=== Starting service ==="
+sudo systemctl start $SERVICE_NAME
+echo "Service $SERVICE_NAME started."
 
-echo "=== Displaying last 100 lines of log and following new entries for 30 seconds ==="
-{
-    tail -n 100 -f /var/log/ksmcc3/ksmcc3_error.log &
-    TAIL_PID=$!
-    sleep 30
-    echo "Stopping tail command..."
-    kill "$TAIL_PID" 2>/dev/null || true
-    echo "Tail stopped."
-}
+echo -e "\n=== Display last 100 log lines ==="
+tail -n 100 -f "$LOG_FILE" &
+TAIL_PID=$!
+sleep 30
+sudo kill $TAIL_PID 2>/dev/null || true
 
-echo "=== Done ==="
+echo -e "\n=== Running Polkadot machine benchmark ==="
+$POLKADOT_BIN benchmark machine

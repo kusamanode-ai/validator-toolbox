@@ -15,11 +15,16 @@ Scripts compatible with multiple Linux distributions. Example: node log parsing,
 
 Usage
 
-Choose the script for your OS and purpose.
+1. Make sure you have the Polkadot node built and located at:
+/home/<your_user>/polkadot-sdk/target/release/polkadot
 
-Review the script before execution.
+2. Make the script executable:
+chmod +x scriptKsmcc3.sh
 
-Run with appropriate permissions (some scripts require sudo).
+3. Run the script:
+./scriptKsmcc3.sh
+
+4. Check the log output for any errors and verify that the benchmark completes successfully.
 
 Contributing
 
